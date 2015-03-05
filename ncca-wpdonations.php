@@ -3,7 +3,7 @@
 Plugin Name: NCCA WPDonations
 Plugin URI: http://wptechcentre.com/
 Description: Declares a plugin that extends Remi Corson's WPDonations plugin.
-Version: 1.3
+Version: 1.4
 Author: Tom Frearson
 Author URI: http://wptechcentre.com/
 License: GPLv2
@@ -34,20 +34,30 @@ add_filter( 'the_campaign_funds', 'ncca_funds_number_format' );
 
 
 /**
- * Add donate button to bottom and sidebar of single Appeal and Journey pages
+ * Add donate button to bottom and sidebar of single Appeal, Journey and In Memory pages
  */
 function ncca_add_donate_button( $post = null ) {
 	$post = get_post( $post );
 	$campaign_name = $post->post_name;
 	$campaign_title = $post->post_title;
 	
-	if( is_singular( 'appeal' ) || is_singular( 'journey' ) || is_singular( 'in-memory' ) ) {
+	if( is_singular( 'appeal' ) || is_singular( 'journey' ) ) {
 		echo '
 			<form action="/donate/" method="POST">'
 				. wp_nonce_field( 'donate_now' ) .
 				'<input name="campaign_name" type="hidden" value="' . esc_attr( $campaign_name ) . '">
 				<input name="campaign_title" type="hidden" value="' . esc_attr( $campaign_title ) . '">
 				<input class="button donate" type="submit" value="Donate to ' . esc_attr( $campaign_title ) . ' &rarr;">
+			</form>';
+	}
+	
+	elseif( is_singular( 'in-memory' ) ) {
+		echo '
+			<form action="/donate/" method="POST">'
+				. wp_nonce_field( 'donate_now' ) .
+				'<input name="campaign_name" type="hidden" value="' . esc_attr( $campaign_name ) . '">
+				<input name="campaign_title" type="hidden" value="' . esc_attr( $campaign_title ) . '">
+				<input class="button donate" type="submit" value="Donate in memory of ' . esc_attr( $campaign_title ) . ' &rarr;">
 			</form>';
 	}
 }
