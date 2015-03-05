@@ -246,11 +246,11 @@ function ncca_the_campaign_title() {
 
 
 /**
- * Hide sidebar when donations form is submitted
+ * Hide page title and sidebar when donations form is submitted
  */
 function ncca_hide_donations_sidebar() {
 	if( is_page( 'donate' ) && isset( $_GET[ 'step' ] ) ) {
-		print '<style type="text/css">#sidebar{visibility:hidden}</style>';
+		print '<style type="text/css">#sidebar,#page-title{visibility:hidden}</style>';
 	}
 }
 add_action( 'wp_print_styles', 'ncca_hide_donations_sidebar' );
