@@ -3,7 +3,7 @@
 Plugin Name: NCCA WPDonations
 Plugin URI: http://wptechcentre.com/
 Description: Declares a plugin that extends Remi Corson's WPDonations plugin.
-Version: 1.4
+Version: 1.5
 Author: Tom Frearson
 Author URI: http://wptechcentre.com/
 License: GPLv2
@@ -43,23 +43,25 @@ function ncca_add_donate_button( $post = null ) {
 	
 	if( is_singular( 'appeal' ) || is_singular( 'journey' ) ) {
 		echo '
-			<form action="/donate/" method="POST">'
+			<form action="' . home_url() . '/donate/" method="POST">'
 				. wp_nonce_field( 'donate_now' ) .
 				'<input name="campaign_name" type="hidden" value="' . esc_attr( $campaign_name ) . '">
 				<input name="campaign_title" type="hidden" value="' . esc_attr( $campaign_title ) . '">
+				<input name="campaign_type" type="hidden" value="">
 				<input class="button donate" type="submit" value="Donate to ' . esc_attr( $campaign_title ) . ' &rarr;">
 			</form>';
 	}
-	
 	elseif( is_singular( 'in-memory' ) ) {
 		echo '
-			<form action="/donate/" method="POST">'
+			<form action="' . home_url() . '/donate/" method="POST">'
 				. wp_nonce_field( 'donate_now' ) .
 				'<input name="campaign_name" type="hidden" value="' . esc_attr( $campaign_name ) . '">
 				<input name="campaign_title" type="hidden" value="' . esc_attr( $campaign_title ) . '">
+				<input name="campaign_type" type="hidden" value="in-memory">
 				<input class="button donate" type="submit" value="Donate in memory of ' . esc_attr( $campaign_title ) . ' &rarr;">
 			</form>';
 	}
+	wp_reset_postdata();
 }
 add_action( 'udesign_single_post_entry_bottom', 'ncca_add_donate_button', 1 );
 add_action( 'udesign_sidebar_top', 'ncca_add_donate_button', 1 );
@@ -219,13 +221,21 @@ add_action( 'wp_print_styles', 'ncca_hide_donations_page_title' );
  */
 function ncca_donations_page_title() {
 	$campaign_title = stripslashes( $_POST[ 'campaign_title' ] );
+	$campaign_type = stripslashes( $_POST[ 'campaign_type' ] );
 	
-	if( is_page( 'donate' ) && !empty( $campaign_title ) ) {
+	if( is_page( 'donate' ) && !empty( $campaign_title ) && empty( $campaign_type ) ) {
 		echo '
 			<div id="page-title">
 				<h1 class="pagetitle donate">Donate to ' . esc_attr( $campaign_title ) . '</h1>
 			</div>';
-	} elseif( is_page( 'donate' ) && empty( $campaign_title ) ) {
+	}
+	elseif( is_page( 'donate' ) && !empty( $campaign_title ) && ( $campaign_type == 'in-memory' ) ) {
+		echo '
+			<div id="page-title">
+				<h1 class="pagetitle donate">Donate in memory of ' . esc_attr( $campaign_title ) . '</h1>
+			</div>';
+	}
+	elseif( is_page( 'donate' ) && empty( $campaign_title ) && empty( $campaign_type ) ) {
 		echo '
 			<div id="page-title">
 				<h1 class="pagetitle donate">Donate to ' . get_bloginfo( 'name' ) . '</h1>
@@ -268,7 +278,7 @@ function ncca_filter_appeal_archive() {
 }
 add_action( 'udesign_main_content_top', 'ncca_filter_appeal_archive', 999 );
 
-function ncca_filter_journey_archive( $content ) {
+function ncca_filter_journey_archive() {
 	if( is_tax( 'journey_type', 'our_journey' ) ) {
 		echo '
 			<p>NCCA UK runs campaigns to fund the treatment of individual children. These campaigns are organised into \'journeys\' and \'appeals\'. The difference between the two formats is whether or not a final decision has been made on which treatment path represents the best option for a family. Appeals are only run when a family have determined their chosen treatment path and, with the charity, have fixed a fundraising total. Journeys are less focused campaigns for funds, keeping children with neuroblastoma in the public consciousness and collecting money for the very probable eventuality that they will require costly treatment path abroad.</p>
