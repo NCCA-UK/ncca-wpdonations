@@ -3,7 +3,7 @@
 Plugin Name: NCCA WPDonations
 Plugin URI: http://wptechcentre.com/
 Description: Declares a plugin that extends Remi Corson's WPDonations plugin.
-Version: 1.5
+Version: 1.6
 Author: Tom Frearson
 Author URI: http://wptechcentre.com/
 License: GPLv2
@@ -34,14 +34,14 @@ add_filter( 'the_campaign_funds', 'ncca_funds_number_format' );
 
 
 /**
- * Add donate button to bottom and sidebar of single Appeal, Journey and In Memory pages
+ * Add donate button to bottom and sidebar of single Appeal, Journey, In Memory and Wishes pages
  */
 function ncca_add_donate_button( $post = null ) {
 	$post = get_post( $post );
 	$campaign_name = $post->post_name;
 	$campaign_title = $post->post_title;
 	
-	if( is_singular( 'appeal' ) || is_singular( 'journey' ) ) {
+	if( is_singular( 'appeal' ) || is_singular( 'journey' ) || is_singular( 'wishes' ) ) {
 		echo '
 			<form action="' . home_url() . '/donate/" method="POST">'
 				. wp_nonce_field( 'donate_now' ) .
@@ -93,7 +93,7 @@ add_action( 'udesign_sidebar_top', 'ncca_donation_progress_bar', 0 );
 
 
 /**
- * Add running total to single Journey and In Memory pages
+ * Add running total to single Journey, In Memory and Wishes pages
  */
 function ncca_total_donations( $post = null ) {	
 	$post = get_post( $post );
@@ -103,7 +103,7 @@ function ncca_total_donations( $post = null ) {
 	$campaign_id = get_term_by( 'slug', $campaign_name , 'donation_campaign' );
 	$campaign_id = $campaign_id->term_id;
 	
-	if( ( is_singular( 'journey' ) || is_singular( 'in-memory' ) ) && !empty( $campaign_id ) ) {
+	if( ( is_singular( 'journey' ) || is_singular( 'in-memory' ) || is_singular( 'wishes' ) ) && !empty( $campaign_id ) ) {
 		echo '
 			<div id="donation-progress" class="widget widget_text substitute_widget_class">
 				<h3>Donations to ' . esc_attr( $campaign_title ) . '</h3>
@@ -119,7 +119,9 @@ add_action( 'udesign_sidebar_top', 'ncca_total_donations', 0 );
  * Edit WPDonations form fields
  */
 function ncca_edit_donations_form_fields( $fields ) {
-	$campaign_name = $_POST[ 'campaign_name' ];
+	if( isset( $_POST[ 'campaign_name' ] ) ) {
+		$campaign_name = $_POST[ 'campaign_name' ];
+	}
 	
 	if( !empty( $campaign_name ) ) {
 		$campaign_name = $campaign_name;
@@ -134,6 +136,8 @@ function ncca_edit_donations_form_fields( $fields ) {
 	$fields['donation']['donation_campaign']['options'] = null;
 	$fields['donation']['donation_campaign']['placeholder'] = null;
 	$fields['donation']['donation_campaign']['value'] = $campaign_name;
+	
+	$fields['donation']['donation_message']['required'] = false;
 	
 	$fields['donor']['donor_address']['required'] = true;
 	$fields['donor']['donor_zip']['required'] = true;
@@ -159,15 +163,17 @@ add_filter( 'submit_donation_form_fields', 'ncca_remove_donations_form_fields' )
  * Add WPDonations form fields
  */
 function ncca_add_donations_form_fields( $fields ) {
-	$campaign_title = stripslashes( $_POST[ 'campaign_title' ] );
+	if( isset( $_POST[ 'campaign_title' ] ) ) {
+		$campaign_title = stripslashes( $_POST[ 'campaign_title' ] );
+	}
 	
 	if( !empty( $campaign_title ) ) {
 		$campaign_title = $campaign_title;
 	} else {
 		$campaign_title = get_bloginfo( 'name' );
 	}
-	
-    $fields['donation']['campaign_title'] = array(
+
+	$fields['donation']['campaign_title'] = array(
 		'label'       => __( 'Campaign title', 'wpdonations' ),
 		'description' => __( '' ),
 		'type'        => 'text',
@@ -176,6 +182,26 @@ function ncca_add_donations_form_fields( $fields ) {
 		'priority'    => 8
 		);
 	
+	$fields['donor']['donor_email'] = array(
+		'label'       => __( 'Your email address', 'wpdonations' ),
+		'description' => __( '' ),
+		'type'        => 'email',
+		'required'    => true,
+		'value' 	  => '',
+		'placeholder' => __( 'Enter your email', 'wpdonations' ),
+		'priority'    => 0
+		);
+
+	$fields['donor']['donor_country'] = array(
+		'label'       => __( 'Country', 'wpdonations' ),
+		'description' => __( '' ),
+		'type'        => 'select',
+		'required'    => true,
+		'options'     => ncca_donor_countries(),
+		'placeholder' => __( '', 'wpdonations' ),
+		'priority'    => 8
+		);
+
     return $fields;
 }
 
@@ -186,6 +212,8 @@ add_action( 'wpdonations_update_donation_data', 'frontend_add_fields_save', 10, 
 function frontend_add_fields_save( $donation_id, $values ) {
     // Duplicate the following line for each new field added
 	update_post_meta( $donation_id, '_campaign_title', $values['donation']['campaign_title'] );
+	update_post_meta( $donation_id, '_donor_email', $values['donor']['donor_email'] );
+	update_post_meta( $donation_id, '_donor_country', $values['donor']['donor_country'] );
 }
 add_filter( 'submit_donation_form_fields', 'ncca_add_donations_form_fields' );
 
@@ -199,10 +227,34 @@ function ncca_donation_amounts( $options ) {
 					'50' => '50',
 					'100' => '100'
 				);
-	
+
 	return $options;
 }
 add_filter( 'donation_available_amounts', 'ncca_donation_amounts' );
+
+
+/*
+ * Filter donations recurring periods
+ */
+function ncca_donation_recurring_periods() {
+	$terms = array( 
+				array( 'oneshot', __( 'One time payment', 'wpdonations' ) ),
+				array( 'monthly', __( 'Monthly payments', 'wpdonations' ) )
+				);
+
+	return $terms;
+}
+add_filter( 'donation_recurring_periods', 'ncca_donation_recurring_periods' );
+
+
+/*
+ * List donor countries
+ */
+function ncca_donor_countries() {
+	require_once( 'donor-countries.php' );
+	
+	return $donor_countries;
+}
 
 
 /**
@@ -220,8 +272,10 @@ add_action( 'wp_print_styles', 'ncca_hide_donations_page_title' );
  * Add custom donations page title
  */
 function ncca_donations_page_title() {
-	$campaign_title = stripslashes( $_POST[ 'campaign_title' ] );
-	$campaign_type = stripslashes( $_POST[ 'campaign_type' ] );
+	if( isset( $_POST[ 'campaign_title' ] ) && isset( $_POST[ 'campaign_type' ] ) ) {
+		$campaign_title = stripslashes( $_POST[ 'campaign_title' ] );
+		$campaign_type = stripslashes( $_POST[ 'campaign_type' ] );
+	}
 	
 	if( is_page( 'donate' ) && !empty( $campaign_title ) && empty( $campaign_type ) ) {
 		echo '
@@ -250,8 +304,10 @@ add_action( 'udesign_main_content_top', 'ncca_donations_page_title' );
  * Get the donation campaign title for preview page
  */
 function ncca_the_campaign_title() {
-	$campaign_title = stripslashes( $_POST[ 'campaign_title' ] );
+	if( isset( $_POST[ 'campaign_title' ] ) ) {
+		$campaign_title = stripslashes( $_POST[ 'campaign_title' ] );
 		echo $campaign_title;
+	}
 }
 
 
