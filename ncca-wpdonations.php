@@ -34,6 +34,32 @@ add_filter( 'the_campaign_funds', 'ncca_funds_number_format' );
 
 
 /**
+ * Register shortcode for donate to campaign button
+ */
+function ncca_donate_shortcode( $atts ) {
+
+	// Attributes
+	extract( shortcode_atts(
+		array(
+			'name' => 'ncca',
+			'title' => 'NCCA UK',
+		), $atts )
+	);
+	
+	// Output
+	return '
+			<form action="' . home_url() . '/donate/" method="POST">'
+				. wp_nonce_field( 'donate_now' ) .
+				'<input name="campaign_name" type="hidden" value="' . esc_attr( $name ) . '">
+				<input name="campaign_title" type="hidden" value="' . esc_attr( $title ) . '">
+				<input name="campaign_type" type="hidden" value="">
+				<input class="button donate" type="submit" value="Donate to ' . esc_attr( $title ) . ' &rarr;">
+			</form>';
+}
+add_shortcode( 'donate', 'ncca_donate_shortcode' );
+
+
+/**
  * Add donate button to bottom and sidebar of single Appeal, Journey, In Memory and Wishes pages
  */
 function ncca_add_donate_button( $post = null ) {
@@ -320,6 +346,36 @@ function ncca_hide_donations_sidebar() {
 	}
 }
 add_action( 'wp_print_styles', 'ncca_hide_donations_sidebar' );
+
+
+/**
+ * Register sidebars for Appeal, Journey, In Memory and Wishes pages
+ */
+function ncca_register_sidebars() {
+	register_sidebar( array(
+		'name'          => __( 'Campaigns Sidebar', 'ncca_udesign' ),
+		'id'            => 'campaigns',
+		'description'   => 'Sidebar for the Appeal, Journey, In Memory and Wishes pages',
+		'class'         => 'campaigns-sidebar',
+		'before_widget' => '<div id="%1$s" class="widget %2$s">',
+		'after_widget'  => '</div>',
+		'before_title'  => '<h3 class="widgettitle">',
+		'after_title'   => '</h3>'
+		)
+	);
+	register_sidebar( array(
+		'name'          => __( 'Alfie\'s Wishes Sidebar', 'ncca_udesign' ),
+		'id'            => 'alfies-wishes',
+		'description'   => 'Sidebar for the Alfie\'s Wishes page',
+		'class'         => 'alfies-wishes-sidebar',
+		'before_widget' => '<div id="%1$s" class="widget %2$s">',
+		'after_widget'  => '</div>',
+		'before_title'  => '<h3 class="widgettitle">',
+		'after_title'   => '</h3>'
+		)
+	);
+}
+add_action( 'widgets_init', 'ncca_register_sidebars' );
 
 
 /**
